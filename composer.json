@@ -1,0 +1,13 @@
+{
+    "name": "kirillDanshin/izumrud-php-router",
+    "type": "library",
+    "license": "Apache License 2.0",
+    "authors": [
+        {
+            "name": "Kirill Danshin",
+            "email": "k@guava.by"
+        }
+    ],
+    "minimum-stability": "stable",
+    "require": {}
+}

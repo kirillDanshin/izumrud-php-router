@@ -7,52 +7,52 @@ class Routes
     /**
      * @var array List of URI's to match against
      */
-    private static $_listUri = array();
+    private $_listUri = array();
 
     /**
      * @var array List of closures to call
      */
-    private static $_listCall = array();
+    private $_listCall = array();
 
     /**
      * @var string Class-wide items to clean
      */
-    private static $_trim = '/\^$';
+    private $_trim = '/\^$';
 
     /**
      * @var string Class-wide items to clean
      */
-    private static $_notFoundFunction = null;
+    private $_notFoundFunction = null;
 
     /**
      * @var string Class-wide items to clean
      */
-    private static $_found = false;
+    private $_found = false;
 
     /**
      * @var string Class-wide project identifier
      */
-    private static $_project = null;
+    private $_project = null;
 
     /**
      * @var string Class-wide projects register
      */
-    private static $_projects = null;
+    private $_projects = null;
 
     /**
      * @var string Class-wide projects register
      */
-    private static $_projectHadlers = null;
+    private $_projectHadlers = null;
 
     /**
      * @var string Class-wide routing map handler
      */
-    private static $_routingMap = null;
+    private $_routingMap = null;
 
     /**
      * @var string Flag for checking global-wide URIs
      */
-    private static $_check_globals = true;
+    private $_check_globals = true;
 
     /**
      * readRoutingMap - Reads "routes.map" file in project directory.
@@ -70,7 +70,7 @@ class Routes
     /**
      * readRoutingMap - Reads "routes.map" file in project directory.
      */
-    public static function readRoutingMap()
+    public function readRoutingMap()
     {
         if (file_exists('routes.map')) {
             include 'routes.map';
@@ -86,7 +86,7 @@ class Routes
      * @param callable|object $function An anonymous function
      * @param string|null     $project
      */
-    public static function add($uri, callable $function, $project = null)
+    public function add($uri, callable $function, $project = null)
     {
         $uri = trim($uri, self::$_trim);
         $project = is_null($project) ? 'global' : trim($project, 'www.');
@@ -94,7 +94,7 @@ class Routes
         self::$_listCall[$project][] = $function;
     }
 
-    public static function addProjectHandler($callback, $project)
+    public function addProjectHandler($callback, $project)
     {
         if (Izumrud::getWorkingProject() == $project) {
             if (is_callable($callback)) {
@@ -103,7 +103,7 @@ class Routes
         }
     }
 
-    public static function setNotFoundAction($notFoundFunction, $project = 'global')
+    public function setNotFoundAction($notFoundFunction, $project = 'global')
     {
         if (is_callable($notFoundFunction)) {
             self::$_notFoundFunction[$project] = $notFoundFunction;
@@ -117,7 +117,7 @@ class Routes
     /**
      * submit - Looks for a match for the URI and runs the related function.
      */
-    public static function submit($check_global = false)
+    public function submit($check_global = false)
     {
         if (isset(self::$_projectHadlers[Izumrud::getWorkingProject()])) {
             call_user_func(self::$_projectHadlers[Izumrud::getWorkingProject()]);
@@ -179,7 +179,7 @@ class Routes
     /**
      * projects - Reads "routes.map" file in project directory.
      */
-    public static function projects()
+    public function projects()
     {
         self::$_projects = Izumrud::getProjectsList();
     }

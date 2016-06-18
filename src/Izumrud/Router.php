@@ -7,12 +7,12 @@ class Router
     /**
      * @var array List of URI's to match against
      */
-    private $_listUri = array();
+    private $_listUri = [];
 
     /**
      * @var array List of closures to call
      */
-    private $_listCall = array();
+    private $_listCall = [];
 
     /**
      * @var string Class-wide items to clean
@@ -55,21 +55,23 @@ class Router
     private $_check_globals = true;
 
     /**
-     * readRoutingMap - Reads "routes.map" file in project directory.
+     * @var {callable|null} Injeced logger
      */
+    private $injected_logger = null;
+
     public function __construct()
     {
-        if ($this->_project === null) {
-            if (!array_key_exists($this->getWorkingProject(), $this->_projects)) {
-                $this->project = 'global';
-            }
-        }
+        // if ($this->_project === null) {
+        //     if (!array_key_exists($this->GetWorkingProject(), $this->_projects)) {
+        //         $this->project = 'global';
+        //     }
+        // }
     }
 
-    public function getWorkingProject()
+    public function GetWorkingProject()
     {
-        if (array_key_exists()) {
-        }
+        // if (array_key_exists()) {
+        // }
 
         return 'global';
     }
@@ -81,27 +83,57 @@ class Router
      * @param callable|object $function An anonymous function
      * @param string|null     $project
      */
-    public function add($uri, callable $function, $project = null)
+    public function Add($uri, callable $function, $project = null)
     {
-        $uri = trim($uri, self::$_trim);
+        $uri = trim($uri, $this->_trim);
         $project = is_null($project) ? 'global' : trim($project, 'www.');
-        self::$_listUri[$project][] = $uri;
-        self::$_listCall[$project][] = $function;
+        $this->_listUri[$project][] = $uri;
+        $this->_listCall[$project][] = $function;
     }
 
-    public function addProjectHandler($callback, $project)
+    /**
+     * AddProjects adds projects to local registry.
+     *
+     * @param {array} $projects Projects to add
+     */
+    public function AddProjects(array $projects)
     {
-        if (Izumrud::getWorkingProject() == $project) {
-            if (is_callable($callback)) {
-                self::$_projectHadlers[$project] = $callback;
+        foreach ($projects as $name => $cfg) {
+            if (isset($this->_projects[$name])) {
+                $this->log('overriding project %s', $name);
+            }
+            $this->_projects[$name] = $cfg;
+            if (isset($cfg['not_found_handler'])) {
+                $this->SetNotFoundAction($cfg['not_found_handler'], $name);
             }
         }
     }
 
-    public function setNotFoundAction($notFoundFunction, $project = 'global')
+    /**
+     * AddProjectHandler registers a project handler.
+     *
+     * @param {callable} $callback
+     * @param {string}   $project
+     */
+    public function AddProjectHandler($callback, $project)
+    {
+        if ($this->GetWorkingProject() == $project) {
+            if (is_callable($callback)) {
+                $this->_projectHadlers[$project] = $callback;
+            }
+        }
+    }
+
+    /**
+     * SetNotFoundAction sets a "not found" handler for a project.
+     *
+     * @param {callable} $notFoundFunction
+     * @param {string}   $project
+     */
+    public function SetNotFoundAction($notFoundFunction, $project = 'global')
     {
         if (is_callable($notFoundFunction)) {
-            self::$_notFoundFunction[$project] = $notFoundFunction;
+            $this->_notFoundFunction[$project] = $notFoundFunction;
 
             return true;
         } else {
@@ -110,24 +142,69 @@ class Router
     }
 
     /**
+     * @param {callable} $logger - function($msg string)
+     */
+    public function InjectLogger($logger)
+    {
+        $this->log('overriding logger');
+        if (is_callable($logger)) {
+            $this->injected_logger = $logger;
+
+            return true;
+        }
+
+        return false;
+    }
+
+    private function log()
+    {
+        if ($this->injected_logger == null || !is_callable($this->injected_logger)) {
+            return false;
+        }
+        $args = func_get_args();
+        $c = count($args);
+        if ($c == 0) {
+            return false;
+        }
+        if ($c > 1) {
+            $msg = call_user_func_array('sprintf', $args);
+        } else {
+            $msg = $args[0];
+        }
+        call_user_func_array($this->injected_logger, [$msg]);
+
+        return true;
+    }
+
+    /**
      * submit - Looks for a match for the URI and runs the related function.
      */
-    public function submit($check_global = false)
+    public function Submit($check_global = false)
     {
-        if (isset(self::$_projectHadlers[Izumrud::getWorkingProject()])) {
-            call_user_func(self::$_projectHadlers[Izumrud::getWorkingProject()]);
+        if (isset($this->_projectHadlers[$this->GetWorkingProject()])) {
+            call_user_func($this->_projectHadlers[$this->GetWorkingProject()]);
         }
-        self::projects();
-        $uri = isset($_REQUEST['uri']) ?
-            ($_REQUEST['uri'] == '/' ? 'home' : (empty($_REQUEST['uri']) ? 'home' : $_REQUEST['uri'])) : 'home';
-        $uri = trim($uri, self::$_trim);
-        $project = $check_global ? 'global' : Izumrud::getWorkingProject();
-        $replacementValues = array();
+
+        if (isset($_REQUEST['uri']) && $_REQUEST['uri'] !== '/' && !empty($_REQUEST['uri'])) {
+            $uri = preg_replace("/\/+/", '/', trim($_REQUEST['uri'], $this->_trim));
+        } else {
+            $uri = 'home';
+        }
+        $project = $check_global ? 'global' : $this->GetWorkingProject();
+        $replacementValues = [];
+
+        if (!isset($this->_listUri[$project])) {
+            $this->log('"%s" project uri map wasn\'t found while serving "%s"', $project, $uri);
+
+            // $this->
+
+            return false;
+        }
 
         /*
          * List through the stored URI's
          */
-        foreach (self::$_listUri[$project] as $listKey => $listUri) {
+        foreach ($this->_listUri[$project] as $listKey => $listUri) {
             /*
              * See if there is a match
              */
@@ -137,7 +214,7 @@ class Router
                  */
                 $realUri = explode('/', $uri);
                 $fakeUri = explode('/', $listUri);
-                self::$_found = true;
+                $this->_found = true;
 
                 /*
                  * Gather the .+ values with the real values in the URI
@@ -151,17 +228,20 @@ class Router
                 /*
                  * Pass an array for arguments
                  */
-                call_user_func_array(self::$_listCall[$project][$listKey], $replacementValues);
+                call_user_func_array($this->_listCall[$project][$listKey], $replacementValues);
             }
         }
 
-        if (self::$_found == false) {
+        if ($this->_found == false) {
+            $args = ['requested_uri' => $uri];
+            if (isset($this->_notFoundFunction[$project])) {
+                call_user_func_array($this->_notFoundFunction[$project], [$args]);
+            }
             if ($project !== 'global') {
                 if (self::submit(true) == false) {
-                    $arguments = array('requested_uri' => $uri);
-                    $notFoundFunctionProject = array_key_exists($project, self::$_notFoundFunction) ? $project :
+                    $selProject = array_key_exists($project, $this->_notFoundFunction) ? $project :
                         'global';
-                    call_user_func_array(self::$_notFoundFunction[$notFoundFunctionProject], array($arguments));
+                    call_user_func_array($this->_notFoundFunction[$selProject], [$args]);
                 }
             }
 
@@ -172,11 +252,13 @@ class Router
     }
 
     /**
-     * projects - Reads "routes.map" file in project directory.
+     * Projects - returns current projects registry.
+     *
+     * @return {array} projects
      */
-    public function projects()
+    public function Projects()
     {
-        self::$_projects = Izumrud::getProjectsList();
+        return $this->_projects;
     }
 }
 

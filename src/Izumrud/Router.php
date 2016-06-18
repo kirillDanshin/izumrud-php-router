@@ -1,8 +1,8 @@
 <?php
 
-namespace Izumrud\Router;
+namespace Izumrud;
 
-class Routes
+class Router
 {
     /**
      * @var array List of URI's to match against
@@ -59,24 +59,19 @@ class Routes
      */
     public function __construct()
     {
-        self::readRoutingMap();
-        if (!array_key_exists(Izumrud::getWorkingProject(), self::$_projects)) {
-            self::$_project = 'global';
-        } else {
-            self::$_project = Izumrud::getWorkingProject();
+        if ($this->_project === null) {
+            if (!array_key_exists($this->getWorkingProject(), $this->_projects)) {
+                $this->project = 'global';
+            }
         }
     }
 
-    /**
-     * readRoutingMap - Reads "routes.map" file in project directory.
-     */
-    public function readRoutingMap()
+    public function getWorkingProject()
     {
-        if (file_exists('routes.map')) {
-            include 'routes.map';
-        } else {
-            die('ENOROUTINGMAP');
+        if (array_key_exists()) {
         }
+
+        return 'global';
     }
 
     /**
